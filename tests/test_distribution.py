@@ -1,4 +1,5 @@
 import random
+import numpy as np
 import pytest
 
 from distribution import NormalDistribution, UniformDistribution
@@ -24,6 +25,7 @@ def test_uniform_expected_value_max(a: float, b: float, upper: float):
     to the statistically measured average.
     """
     random.seed(42)
+    np.random.seed(42)
     distribution = UniformDistribution(a, b)
     samples = [min(distribution.sample(), upper) for _ in range(NUMBER_OF_SAMPLES)]
     measured_average = sum(samples) / len(samples)

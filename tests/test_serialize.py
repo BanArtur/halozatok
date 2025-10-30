@@ -6,7 +6,7 @@ from pathlib import Path
 
 from distribution import NormalDistribution, UniformDistribution
 from serialize import GraphJSONDecoder, GraphJSONEncoder
-from vertex import Edge, Graph, Vertex
+from graph import Edge, Graph, Vertex
 
 
 def graphs_equal(g1: Graph, g2: Graph) -> bool:

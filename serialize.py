@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from distribution import SAMPLE_SIZE, IDistribution, NormalDistribution, UniformDistribution
-from vertex import Edge, Graph, Vertex
+from graph import Edge, Graph, Vertex
 
 
 class GraphJSONEncoder(json.JSONEncoder):
