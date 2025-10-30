@@ -11,6 +11,7 @@ from graph import Edge, Graph, Vertex
 
 def graphs_equal(g1: Graph, g2: Graph) -> bool:
     """Recursive equality check for small graphs."""
+
     def equal_vertex(v1: Vertex, v2: Vertex):
         if v1.reward != v2.reward or len(v1.out_edges) != len(v2.out_edges):
             return False
@@ -70,7 +71,6 @@ def test_graph_json_roundtrip():
         decoder = GraphJSONDecoder()
         graphs = make_sample_graphs()
 
-        
         # Save each separately
         for i, g in enumerate(graphs):
             path = os.path.join(tmp, f"graph_{i}.json")
@@ -80,7 +80,6 @@ def test_graph_json_roundtrip():
                 loaded = json.load(f, object_hook=decoder.object_hook_graph)
             assert graphs_equal(g, loaded)
 
-        
         # Dump as list of graphs
         list_file = os.path.join(tmp, "graphs_list.json")
         with open(list_file, "w") as f:
@@ -89,8 +88,7 @@ def test_graph_json_roundtrip():
             reloaded = json.load(f, object_hook=decoder.object_hook_graph)
         assert len(reloaded) == len(graphs)
         assert all(graphs_equal(g, r) for g, r in zip(graphs, reloaded))
-        
-        
+
         # Dump as a dict
         dict_file = os.path.join(tmp, "graphs_dict.json")
         dict_graphs = {
@@ -104,5 +102,3 @@ def test_graph_json_roundtrip():
             reloaded = json.load(f, object_hook=decoder.object_hook_graph)
         assert len(reloaded) == len(graphs)
         assert all(graphs_equal(v, reloaded[k]) for k, v in dict_graphs.items())
-
-        

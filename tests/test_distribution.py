@@ -18,6 +18,7 @@ arguments = [
     (1, 2, 3),
 ]
 
+
 @pytest.mark.parametrize("a, b, upper", arguments)
 def test_uniform_expected_value_max(a: float, b: float, upper: float):
     """
@@ -31,7 +32,7 @@ def test_uniform_expected_value_max(a: float, b: float, upper: float):
     measured_average = sum(samples) / len(samples)
     expected_val = distribution.expected_value_max(upper)
     assert abs(expected_val - measured_average) < 0.001
-    
+
 
 @pytest.mark.parametrize("mean, scale, upper", arguments)
 def test_normal_expected_value_max(mean: float, scale: float, upper: float):

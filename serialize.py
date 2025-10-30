@@ -1,7 +1,12 @@
 import json
 from typing import Any
 
-from distribution import SAMPLE_SIZE, IDistribution, NormalDistribution, UniformDistribution
+from distribution import (
+    SAMPLE_SIZE,
+    IDistribution,
+    NormalDistribution,
+    UniformDistribution,
+)
 from graph import Edge, Graph, Vertex
 
 
@@ -19,7 +24,12 @@ class GraphJSONEncoder(json.JSONEncoder):
             return {"type": "uniform", "lower": obj.lower, "upper": obj.upper}
 
         elif isinstance(obj, NormalDistribution):
-            return {"type": "normal", "mean": obj.mean, "scale": obj.scale, "sample_size": obj.sample_size}
+            return {
+                "type": "normal",
+                "mean": obj.mean,
+                "scale": obj.scale,
+                "sample_size": obj.sample_size,
+            }
 
         return super().default(obj)
 
@@ -84,7 +94,9 @@ class GraphJSONDecoder(json.JSONDecoder):
         if t == "uniform":
             return UniformDistribution(data["lower"], data["upper"])
         elif t == "normal":
-            return NormalDistribution(data["mean"], data["scale"], data.get("sample_size", SAMPLE_SIZE))
+            return NormalDistribution(
+                data["mean"], data["scale"], data.get("sample_size", SAMPLE_SIZE)
+            )
         else:
             raise ValueError(f"Unknown distribution type: {t}")
 
@@ -99,19 +111,3 @@ class GraphJSONDecoder(json.JSONDecoder):
 
         dfs(start)
         return vertices, edges
-
-if __name__ == "__main__":
-    v1 = Vertex(10)
-    v2 = Vertex(5, ancestor=v1)
-    e1 = Edge(v1, v2, UniformDistribution(1, 3))
-    v1.out_edges.append(e1)
-    g = Graph(start=v1, vertices=[v1, v2], edges=[e1])
-
-    dumped = json.dumps(g, cls=GraphJSONEncoder, indent=2)
-    print(f"Serialized graph:\n{dumped}")
-
-    decoder = GraphJSONDecoder()
-    loaded_graph = decoder.decode_graph(dumped)
-    print("\nRestored Graph:")
-    print("Start reward:", loaded_graph.start.reward)
-    print("Edges:", len(loaded_graph.edges))

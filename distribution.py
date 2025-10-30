@@ -7,6 +7,7 @@ import numpy as np
 
 SAMPLE_SIZE = 100_000
 
+
 class IDistribution(ABC):
     @abstractmethod
     def sample(self) -> float:
@@ -38,6 +39,9 @@ class UniformDistribution(IDistribution):
         assert 0 <= lower < upper
         self.lower = lower
         self.upper = upper
+    
+    def __repr__(self) -> str:
+        return f"Uniform({self.lower, self.upper})"
 
     def sample(self) -> float:
         return random.uniform(self.lower, self.upper)
@@ -58,32 +62,54 @@ class UniformDistribution(IDistribution):
             ) / (self.upper - self.lower)
         else:
             return upper
-    
+
     def multiply(self, number: float) -> Self:
         assert 0 < number
         return UniformDistribution(number * self.lower, number * self.upper)
+
 
 class NormalDistribution(IDistribution):
     """
     Almost normal distribution, we ensure it is not negative
     """
-    def __init__(self, mean: float, scale: float, sample_size: int = SAMPLE_SIZE) -> None:
+
+    def __init__(
+        self, mean: float, scale: float, sample_size: int = SAMPLE_SIZE
+    ) -> None:
         assert 0 <= mean
         assert 0 < scale
         assert 100 < sample_size
         self.mean = mean
         self.scale = scale
         self.sample_size = sample_size
-        
-        
+
+    def __repr__(self) -> str:
+        return f"Normal({self.mean, self.scale})"
+
     def sample(self) -> float:
         return max(0.0, np.random.normal(self.mean, self.scale))
-    
+
     def expected_value(self) -> float:
-        return float(np.average(np.maximum(0.0, np.random.normal(self.mean, self.scale, size=self.sample_size))))
-    
+        return float(
+            np.average(
+                np.maximum(
+                    0.0, np.random.normal(self.mean, self.scale, size=self.sample_size)
+                )
+            )
+        )
+
     def expected_value_max(self, upper: float) -> float:
-        return float(np.average(np.minimum(np.maximum(0.0, np.random.normal(self.mean, self.scale, size=self.sample_size)), upper)))
+        return float(
+            np.average(
+                np.minimum(
+                    np.maximum(
+                        0.0,
+                        np.random.normal(self.mean, self.scale, size=self.sample_size),
+                    ),
+                    upper,
+                )
+            )
+        )
 
     def multiply(self, number: float) -> Self:
         """
@@ -91,4 +117,3 @@ class NormalDistribution(IDistribution):
         """
         assert 0 < number
         return NormalDistribution(number * self.mean, number * self.scale)
-    
