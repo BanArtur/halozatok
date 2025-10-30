@@ -4,16 +4,16 @@ Assignment for paper https://ilanrcohen.droppages.com/pdfs/stochasticLimited.pdf
 
 ## Structure overview:
 
-# graph.py
+### graph.py
 Graph class lives here, we assume directed tree structures
 
-# serialize.py
+### serialize.py
 JSON serializing graphs
 
-# distribution.py
+### distribution.py
 Uniform and Normal distribution for edge costs
 
-# dataset.py:
+### dataset.py:
 We can generate, save and load datasets.
 We have spider and bounded depth trees.
 
