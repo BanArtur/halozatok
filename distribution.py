@@ -33,7 +33,6 @@ class IDistribution(ABC):
         """
 
 
-@dataclass
 class UniformDistribution(IDistribution):
     def __init__(self, lower: float, upper: float) -> None:
         assert 0 <= lower < upper
