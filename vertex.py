@@ -1,22 +1,16 @@
 from dataclasses import dataclass
 
+from distribution import IDistribution
+
 
 @dataclass
 class Vertex:
-    secret_cost: float
     reward: float
-
+    out_edges: list["Edge"]
 
 @dataclass
 class Edge:
     origin: Vertex
     end: Vertex
-
-
-def non_adaptive_sp_graph(graph: list[Vertex], source: int, budget: float) -> None:
-    print("TODO")
-
-
-if __name__ == "__main__":
-    spider_graph: list[Vertex]
-    bw_depth_tree: list[Vertex]
+    distribution: IDistribution
+    secret_sample: float | None = None

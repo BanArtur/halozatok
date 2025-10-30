@@ -3,6 +3,9 @@ from dataclasses import dataclass
 import random
 from typing import Self
 
+import numpy as np
+
+SAMPLE_SIZE = 100_000
 
 class IDistribution(ABC):
     @abstractmethod
@@ -60,3 +63,33 @@ class UniformDistribution(IDistribution):
     def multiply(self, number: float) -> Self:
         assert 0 < number
         return UniformDistribution(number * self.lower, number * self.upper)
+
+class NormalDistribution(IDistribution):
+    """
+    Almost normal distribution, we ensure it is not negative
+    """
+    def __init__(self, mean: float, scale: float, sample_size: int = SAMPLE_SIZE) -> None:
+        assert 0 <= mean
+        assert 0 < scale
+        assert 100 < sample_size
+        self.mean = mean
+        self.scale = scale
+        self.sample_size = sample_size
+        
+        
+    def sample(self) -> float:
+        return max(0.0, np.random.normal(self.mean, self.scale))
+    
+    def expected_value(self) -> float:
+        return float(np.average(np.maximum(0.0, np.random.normal(self.mean, self.scale, size=self.sample_size))))
+    
+    def expected_value_max(self, upper: float) -> float:
+        return float(np.average(np.minimum(np.maximum(0.0, np.random.normal(self.mean, self.scale, size=self.sample_size)), upper)))
+
+    def multiply(self, number: float) -> Self:
+        """
+        This is not exactly x * number, but I don't care :)
+        """
+        assert 0 < number
+        return NormalDistribution(number * self.mean, number * self.scale)
+    
