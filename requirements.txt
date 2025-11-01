@@ -6,3 +6,4 @@ Pygments==2.19.2
 pytest==8.4.2
 PyYAML==6.0.3
 tqdm==4.67.1
+pulp==3.3.0
