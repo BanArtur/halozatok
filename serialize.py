@@ -69,13 +69,15 @@ class GraphJSONDecoder(json.JSONDecoder):
     def _decode_graph_from_obj(self, data):
         start = self._decode_vertex(data["start"], ancestor=None)
         vertices, edges = self._collect(start)
+        for i,vertex in enumerate(vertices):
+            vertex.id = i
         return Graph(start=start, vertices=vertices, edges=edges)
 
     def decode_graph(self, s: str):
         return self._decode_graph_from_obj(json.loads(s))
 
     def _decode_vertex(self, data: dict, ancestor: Vertex | None) -> Vertex:
-        v = Vertex(reward=data["reward"], ancestor=ancestor)
+        v = Vertex(id=None, reward=data["reward"], ancestor=ancestor)
         for e_data in data.get("out_edges", []):
             end_vertex = self._decode_vertex(e_data["end"], ancestor=v)
             dist = self._decode_distribution(e_data["cost_distribution"])

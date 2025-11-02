@@ -5,6 +5,7 @@ from distribution import IDistribution
 
 @dataclass
 class Vertex:
+    id: int
     reward: float
     ancestor: "Vertex | None" = (
         None  # Assuming its a directed tree, it has a 0 or 1 ancestor

@@ -10,6 +10,7 @@ import yaml
 from distribution import IDistribution, NormalDistribution, UniformDistribution
 from graph import Edge, Graph, Vertex
 from serialize import GraphJSONDecoder, GraphJSONEncoder
+from visualize import GraphVisualization
 
 
 # Default configuration parameters for edge distribution generation
@@ -153,8 +154,8 @@ class BoundedTreeDataset(GraphDataset):
         self.beta = beta
     
     def generate_graph(self) -> Graph:
-        start = Vertex(self.reward_distribution.sample())
-        out1 = Vertex(self.reward_distribution.sample(), ancestor=start)
+        start = Vertex(reward=self.reward_distribution.sample(), id=None)
+        out1 = Vertex(reward=self.reward_distribution.sample(), ancestor=start, id=None)
         edge = Edge(start, out1, self.edge_distribution_factory())
         start.out_edges.append(edge)
         
@@ -172,6 +173,7 @@ class BoundedTreeDataset(GraphDataset):
                 new = Vertex(
                     reward=self.reward_distribution.sample(),
                     ancestor=vertex,
+                    id = None
                 )
                 edge = Edge(
                     origin=vertex,
@@ -214,7 +216,10 @@ if __name__ == "__main__":
     dataset.generate_dataset(1000)
     dataset.save_dataset("base")
     """
+
     dataset.load_dataset("base")
     print(len(dataset.graphs[5].vertices))
-    
-    
+
+    G = GraphVisualization()
+    G.buildFromGraph(dataset.graphs[0])
+    G.visualize()
