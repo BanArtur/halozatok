@@ -17,8 +17,7 @@ class GraphVisualization:
             graphIdDict[v] = i
             i+=1
         for e in g.edges:
-            temp = [graphIdDict[e.origin],graphIdDict[e.end]]
-            self.visual.append(temp)
+            self.addEdge(graphIdDict[e.origin],graphIdDict[e.end])
 
     def visualize(self):
         G = nx.DiGraph()
