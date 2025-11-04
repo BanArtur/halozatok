@@ -105,4 +105,17 @@ class Graph:
         parent = vertex.ancestor
         if parent is not None:
             parent.out_edges = [edge for edge in parent.out_edges if edge.end.id != vertex.id]
-            
+    
+    def addSubtree(self, T: "Graph", vertex: Vertex) -> None:
+        if vertex.id not in self.vertices:
+            ancestor = vertex.ancestor
+            assert ancestor is not None
+            assert ancestor.id in self.vertices
+            true_ancestor = self.vertices[ancestor.id]
+            true_vertex = Vertex(id=vertex.id, reward=vertex.reward, ancestor=true_ancestor)
+            true_edge = Edge(true_ancestor, true_vertex, T.edges[(ancestor.id, vertex.id)].cost_distribution)
+            self.edges[(ancestor.id, vertex.id)] = true_edge
+            self.vertices[vertex.id] = true_vertex
+        
+        for edge in vertex.out_edges:
+            self.addSubtree(T, edge.end)

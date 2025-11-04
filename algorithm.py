@@ -1,52 +1,52 @@
 from graph import Graph, Vertex, Edge
 import copy
 
-def expectedCostSubTree(T:Graph, v:Vertex, B:float)->float:
+def expectedCostSubTree(v: Vertex, B: float) -> float:
     sum = 0
     for vc in v.out_edges:
-        sum += vc.cost_distribution.expected_value_max(B)+expectedCostSubTree(T, vc.end,B)
+        sum += vc.cost_distribution.expected_value_max(B) + expectedCostSubTree(vc.end,B)
     return sum
 
-def maxCostChild(T:Graph, v:Vertex, B:float) -> tuple[Vertex,float]:
-    vMax = v.out_edges[0].end
-    mu_vMax = expectedCostSubTree(T, vMax, B)
-    for vc in v.out_edges:
-        if mu_vMax<expectedCostSubTree(T,vc.end, B):
-            vMax = vc.end
-            mu_vMax = expectedCostSubTree(T,vc.end, B)
-    return (vMax,mu_vMax)
+def maxCostChild(v:Vertex, B:float) -> tuple[Vertex,float]:
+    return max([(edge.end, expectedCostSubTree(edge.end, B)) for edge in v.out_edges], key=lambda x: x[1])
 
 def treeDecompose(To:Graph,beta:float,B:float)->list[Graph]:
     T = To.copy()
     epsilon = 1-beta
     alpha = 1 - (epsilon/2)
     S = []
-    mu_T=expectedCostSubTree(T,T.start,B)
-    Si = Graph(T.start,{T.start.id: T.start}, {})
+    mu_T=expectedCostSubTree(T.start,B)
+    
     while(mu_T>alpha):
+        r = Vertex(id=T.start.id, reward=T.start.reward, ancestor=None)
+        Si = Graph(r,{r.id: r}, {})
         v = T.start
         mu_Si = 0
-        while(mu_Si+expectedCostSubTree(T,v,B)>alpha):
-            vNext = maxCostChild(T,v,B)
-            v = vNext[0]
-            Si.vertices.append(v)
-            edges = v.ancestor.out_edges
-            for e in edges:
-                if e.end.id==v.id:
-                    Si.edges.append(e)
-            mu_Si+=vNext[1]
-        w=v.ancestor
-        mu_Si+=expectedCostSubTree(T,v,B)
+        anc = r
+        while mu_Si+expectedCostSubTree(v,B)>alpha:
+            v, _ = maxCostChild(v,B)
+            v_copy = Vertex(v.id, reward=v.reward, ancestor=anc)
+            edge = Edge(anc, v_copy, cost_distribution=T.edges[(anc.id, v.id)].cost_distribution)
+            anc.out_edges.append(edge)
+            Si.vertices[v.id] = v
+            Si.edges[(anc.id, v.id)] = edge
+            mu_Si+=T.edges[(anc.id, v.id)].cost_distribution.expected_value_max(B)
+            anc = v_copy
+        w = v.ancestor
+        assert w is not None
+        mu_Si+=expectedCostSubTree(v,B)
         Si.addSubtree(T,v)
-        T.remove(v)
-        nextChild = maxCostChild(T,w,B)
-        while(mu_Si + nextChild[1] <= alpha):
-            mu_Si += nextChild[1]
-            Si.addSubtree(T, nextChild[0])
-            T.remove(nextChild[0])
-            nextChild = maxCostChild(T,w,B)
-        S.append(copy.deepcopy(Si))
-        mu_T = mu_T - mu_Si+cost(T.start,w)
+        T.removeVertex(v)
+        if w.out_edges:
+            nextChild = maxCostChild(w, B)
+            while nextChild is not None and mu_Si + nextChild[1] <= alpha:
+                mu_Si += nextChild[1]
+                Si.addSubtree(T, nextChild[0])
+                T.removeVertex(nextChild[0])
+                nextChild = maxCostChild(w,B) if w.out_edges else None
+        S.append(Si)
+        mu_T = expectedCostSubTree(T.start,B)
+        
     S.append(T)
     return S
 
