@@ -1,5 +1,6 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 from graph import Graph, Edge, Vertex
 
 class GraphVisualization:
