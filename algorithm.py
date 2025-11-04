@@ -52,19 +52,28 @@ def treeDecompose(To:Graph,beta:float,B:float)->list[Graph]:
     S.append(T)
     return S
 
-def nonRisky(T:Graph, B:float) -> list[Vertex]:
+def nonRisky(T:Graph, B:float,t:float) -> list[Vertex]:
     model = pulp.LpProblem("Maximalization", pulp.LpMaximize)
-    x:list[float]
-    xi=0
+    x={}
+    graphKeys = []
+    for key in T.vertices.keys():
+        if key!=T.start.id:
+            graphKeys.append(key)
+    x = pulp.LpVariable.dicts("VertexesX",T.vertices, lowBound = 0, upBound=1)
+    model+=pulp.lpSum(x[id]*T.vertices[id].reward for id in T.vertices.keys())
+    model+=pulp.lpSum(x[id]*T.edges[(T.vertices[id].ancestor.id,id)].cost_distribution.expected_value_max(B) for id in graphKeys ) <= 1
+    for key in graphKeys:
+        model+=x[key]<=x[T.vertices[key].ancestor.id]
+    model.solve()
     T_1:list[Vertex] = []
     T_2:list[Vertex] = []
     R_1 = 0
     R_2 = 0
-    for v in T.vertices:
-        if x[v] == 1:
+    for v in T.vertices.keys():
+        if pulp.value(x[v]) == 1.0:
             T_1.append(v)
             R_1+=v.reward
-        elif x[v] == xi:
+        elif pulp.value(x[v]) == xi:
             T_2.append(v)
             R_2+=v.reward
     if R_1>R_2:
@@ -73,8 +82,29 @@ def nonRisky(T:Graph, B:float) -> list[Vertex]:
         return T_2
 
 
-def risky(T:Graph, B:float) -> list[Vertex]:
+def risky(T:Graph, B:float, t:float) -> list[Vertex]:
     model = pulp.LpProblem("Maximalization", pulp.LpMaximize)
+    x={}
+    y={}
+    x = pulp.LpVariable.dicts("VertexesX",T.vertices, lowBound = 0, upBound=1)
+    y = pulp.LpVariable.dicts("VertexesY",T.vertices, lowBound = 0, upBound=1)
+    graphKeys = []
+    for key in T.vertices.keys():
+        if key!=T.start.id:
+            graphKeys.append(key)
+    model+=pulp.lpSum([y[id]*T.vertices[id].reward for id in T.vertices.keys()])
+    model+=pulp.lpSum(x[id]*T.edges[(T.vertices[id].ancestor.id,id)].cost_distribution.expected_value_max(1) for id in graphKeys )<=t
+    for id in graphKeys:
+        v_o = T.vertices[id]
+        v_r = v_o
+        cond = True
+        while cond:
+            model+=y[id]<=costSampling(T,v_r,v_o,B)*x[v_r.id]
+            if v_r.ancestor is not None:
+                v_r = v_r.ancestor
+            else:
+                cond = False
+    model.solve()
     leg:list[Vertex] = []
     for v in T.start.out_edges:
         leg = []
@@ -83,7 +113,7 @@ def risky(T:Graph, B:float) -> list[Vertex]:
         cond = True
         while cond:
             leg.append(v_r)
-            sum = x[v] * cost(v_r.ancestor,v_r,B)
+            sum = pulp.value(x[v.end.id]) * cost(v_r.ancestor,v_r,B)
             if len(v_r.out_edges)>0:
                 v_r = v_r.out_edges[0].end
             else:
@@ -127,3 +157,10 @@ def cost(o:Vertex, e:Vertex, B:float) -> float:
         if edge.end.id == e.id:
             sum+= edge.cost_distribution.expected_value_max(B)
     return sum+cost(o,e.ancestor,B)
+
+def costSampling(g:Graph, v1:Vertex, v2:Vertex, B:float) -> float:
+    sum = 0
+    for i in range(100):
+        if cost(v1,v2,B)<=1:
+            sum+=1
+    return sum/100
