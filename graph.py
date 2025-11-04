@@ -1,4 +1,6 @@
+import copy
 from dataclasses import dataclass, field
+from functools import cache
 
 from distribution import IDistribution
 
@@ -31,9 +33,10 @@ class Edge:
 class Graph:
     start: Vertex
 
-    vertices: list[Vertex]
-    edges: list[Edge]
+    vertices: dict[int, Vertex]
+    edges: dict[tuple[int, int], Edge]
 
+    @cache
     def mu_cost(self, B: float) -> float:
         """
         Important for bounded trees. Returns the maximal cost for the leaves bounded by B.
@@ -60,11 +63,46 @@ class Graph:
             return None
 
         ratio = beta / cost
-        for edge in self.edges:
+        for edge in self.edges.values():
             edge.cost_distribution = edge.cost_distribution.multiply(ratio)
 
         cost = self.mu_cost(B)
         while cost > beta:
-            for edge in self.edges:
+            for edge in self.edges.values():
                 edge.cost_distribution = edge.cost_distribution.multiply(0.9)
             cost = self.mu_cost(B)
+
+    def copy(self) -> "Graph":
+        root = copy.deepcopy(self.start)
+        vertices: dict[int, Vertex] = {}
+        edges: dict[tuple[int, int], Edge] = []
+        
+        todos: list[Vertex] = [root]
+        index = 0
+        while index < len(todos):
+            vertex = todos[index]
+            vertices[vertex.id] = vertex
+            for edge in vertex.out_edges:
+                edges[(edge.origin.id, edge.end.id)] = edge
+                todos.append(edge.end)
+            index += 1
+        
+        return Graph(start=root, vertices=vertices, edges=edges)
+        
+    
+    def removeVertex(self, vertex: Vertex) -> None:
+        todos: list[Vertex] = [vertex]
+        index = 0
+        while index < len(todos):
+            curr = todos[index]
+            del self.vertices[curr.id]
+            for edge in curr.out_edges:
+                del self.edges[(edge.origin.id, edge.end.id)]
+                todos.append(edge.end)
+                
+            index += 1
+        
+        parent = vertex.ancestor
+        if parent is not None:
+            parent.out_edges = [edge for edge in parent.out_edges if edge.end.id != vertex.id]
+            

@@ -11,7 +11,7 @@ class GraphVisualization:
         self.visual.append(temp)
 
     def buildFromGraph(self,g:Graph):
-        for e in g.edges:
+        for e in g.edges.values():
             self.addEdge(e.origin.id,e.end.id,e.cost_distribution.expected_value())
 
     def visualize(self):

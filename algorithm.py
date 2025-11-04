@@ -3,28 +3,28 @@ import copy
 import pulp
 import random
 
-def expectedCostSubTree(T:Graph, v:Vertex, B:float)->int:
+def expectedCostSubTree(T:Graph, v:Vertex, B:float)->float:
     sum = 0
     for vc in v.out_edges:
         sum += vc.cost_distribution.expected_value_max(B)+expectedCostSubTree(T, vc.end,B)
     return sum
 
-def maxCostChild(T:Graph, v:Vertex, B:float) -> list[Vertex,int]:
+def maxCostChild(T:Graph, v:Vertex, B:float) -> tuple[Vertex,float]:
     vMax = v.out_edges[0].end
     mu_vMax = expectedCostSubTree(T, vMax, B)
     for vc in v.out_edges:
         if mu_vMax<expectedCostSubTree(T,vc.end, B):
             vMax = vc.end
             mu_vMax = expectedCostSubTree(T,vc.end, B)
-    return [vMax,mu_vMax]
+    return (vMax,mu_vMax)
 
 def treeDecompose(To:Graph,beta:float,B:float)->list[Graph]:
-    T = copy.deepcopy(To)
+    T = To.copy()
     epsilon = 1-beta
     alpha = 1 - (epsilon/2)
     S = []
     mu_T=expectedCostSubTree(T,T.start,B)
-    Si = Graph(T.start,[T.start])
+    Si = Graph(T.start,{T.start.id: T.start}, {})
     while(mu_T>alpha):
         v = T.start
         mu_Si = 0

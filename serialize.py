@@ -69,9 +69,14 @@ class GraphJSONDecoder(json.JSONDecoder):
     def _decode_graph_from_obj(self, data):
         start = self._decode_vertex(data["start"], ancestor=None)
         vertices, edges = self._collect(start)
-        for i,vertex in enumerate(vertices):
+        vertex_dict: dict[int, Vertex] = {}
+        for i, vertex in enumerate(vertices):
             vertex.id = i
-        return Graph(start=start, vertices=vertices, edges=edges)
+            vertex_dict[i] = vertex
+        edges_dict = {}
+        for edge in edges:
+            edges_dict[(edge.origin.id, edge.end.id)] = edge
+        return Graph(start=start, vertices=vertex_dict, edges=edges_dict)
 
     def decode_graph(self, s: str):
         return self._decode_graph_from_obj(json.loads(s))
