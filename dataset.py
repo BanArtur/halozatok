@@ -264,4 +264,4 @@ if __name__ == "__main__":
     G.buildFromGraph(dataset.graphs[0])
     G.visualize()
     """
-    print(algorithm.risky(dataset.graphs[0],1,2))
+    print(algorithm.nonRisky(dataset.graphs[0],1,2))
