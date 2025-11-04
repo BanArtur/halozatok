@@ -69,12 +69,11 @@ def nonRisky(T:Graph, B:float,t:float) -> list[Vertex]:
     T_2:list[Vertex] = []
     R_1 = 0
     R_2 = 0
-    xi = 0
     for v in T.vertices.keys():
         if pulp.value(x[v]) == 1.0:
             T_1.append(T.vertices[v])
             R_1+=T.vertices[v].reward
-        elif pulp.value(x[v]) == xi:
+        elif pulp.value(x[v]) != 0.0:
             T_2.append(T.vertices[v])
             R_2+=T.vertices[v].reward
     if R_1>R_2:
