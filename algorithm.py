@@ -30,7 +30,7 @@ def treeDecompose(To:Graph,beta:float,B:float)->list[Graph]:
             v_copy = Vertex(v.id, reward=v.reward, ancestor=anc)
             edge = Edge(anc, v_copy, cost_distribution=T.edges[(anc.id, v.id)].cost_distribution)
             anc.out_edges.append(edge)
-            Si.vertices[v.id] = v
+            Si.vertices[v.id] = v_copy
             Si.edges[(anc.id, v.id)] = edge
             mu_Si+=T.edges[(anc.id, v.id)].cost_distribution.expected_value_max(B)
             anc = v_copy
@@ -51,6 +51,53 @@ def treeDecompose(To:Graph,beta:float,B:float)->list[Graph]:
         
     S.append(T)
     return S
+
+def transform_to_list(sub_graphs: list[Graph]) -> list[int]:
+    result: list[int] = []
+    for graph in sub_graphs:
+        root = graph.start
+        todos: list[Vertex] = [root]
+        index = 0
+        while index < len(todos):
+            vertex = todos[index]
+            if vertex.id not in result:
+                result.append(vertex.id)
+            for edge in vertex.out_edges:
+                todos.append(edge.end)
+            index += 1
+        
+    return result
+
+def run_list_model(T: Graph, strategy: list[int], B: float = 1.0) -> tuple[list[tuple[Graph, dict[int, str]]], float, float]:
+    T = T.copy()
+    R: float = 0.0
+    budget: float = 0.0
+    colors: dict[int, str] = {v: "white" for v in T.vertices}
+    history: list[tuple[int, dict[int, str]]] = []
+    for id in strategy:
+        if id == T.start.id:
+            R += T.vertices[id].reward
+            history.append((T, colors))
+            colors = dict(colors)
+            T = T.copy()
+            continue
+        edge = T.edges[(T.vertices[id].ancestor.id, id)]
+        
+        edge.probe()
+        if budget + edge.secret_cost > B:
+            colors[id] = "red"
+            history.append((T, colors))
+            break
+        else:
+            budget += edge.secret_cost
+            R += T.vertices[id].reward
+            colors[id] = "green"
+            history.append((T, colors))
+            T = T.copy()
+            colors = dict(colors)
+    
+    return history, budget, R
+        
 
 def nonRisky(T:Graph, B:float) -> list[Vertex]:
     model = pulp.LpProblem("Maximalization", pulp.LpMaximize)

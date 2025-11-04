@@ -1,6 +1,5 @@
 import copy
 from dataclasses import dataclass, field
-from functools import cache
 
 from distribution import IDistribution
 
@@ -36,7 +35,6 @@ class Graph:
     vertices: dict[int, Vertex]
     edges: dict[tuple[int, int], Edge]
 
-    @cache
     def mu_cost(self, B: float) -> float:
         """
         Important for bounded trees. Returns the maximal cost for the leaves bounded by B.
@@ -75,7 +73,7 @@ class Graph:
     def copy(self) -> "Graph":
         root = copy.deepcopy(self.start)
         vertices: dict[int, Vertex] = {}
-        edges: dict[tuple[int, int], Edge] = []
+        edges: dict[tuple[int, int], Edge] = {}
         
         todos: list[Vertex] = [root]
         index = 0
@@ -91,6 +89,7 @@ class Graph:
         
     
     def removeVertex(self, vertex: Vertex) -> None:
+        self.check_reachable()
         todos: list[Vertex] = [vertex]
         index = 0
         while index < len(todos):
@@ -105,8 +104,10 @@ class Graph:
         parent = vertex.ancestor
         if parent is not None:
             parent.out_edges = [edge for edge in parent.out_edges if edge.end.id != vertex.id]
+        self.check_reachable()
     
     def addSubtree(self, T: "Graph", vertex: Vertex) -> None:
+        self.check_reachable()
         if vertex.id not in self.vertices:
             ancestor = vertex.ancestor
             assert ancestor is not None
@@ -116,6 +117,30 @@ class Graph:
             true_edge = Edge(true_ancestor, true_vertex, T.edges[(ancestor.id, vertex.id)].cost_distribution)
             self.edges[(ancestor.id, vertex.id)] = true_edge
             self.vertices[vertex.id] = true_vertex
+            true_ancestor.out_edges.append(true_edge)
         
         for edge in vertex.out_edges:
+            self.check_reachable()
             self.addSubtree(T, edge.end)
+        try:
+            self.check_reachable()
+        except Exception as e:
+            print()
+            print()
+            print(vertex.id)
+            print()
+            raise e
+            
+    def check_reachable(self) -> None:
+        return # For debugging
+        all_vert = set(self.vertices)
+        reachable = [self.start]
+        idx = 0
+        while idx < len(reachable):
+            vertex = reachable[idx]
+            assert vertex is self.vertices[vertex.id], f"{vertex.id=}"
+            for edge in vertex.out_edges:
+                reachable.append(edge.end)
+            idx += 1
+        reachable = [v.id for v in reachable]
+        assert set(reachable) == set(all_vert), f"{set(reachable)} == {set(all_vert)}"

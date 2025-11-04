@@ -82,6 +82,7 @@ class NormalDistribution(IDistribution):
         self.mean = mean
         self.scale = scale
         self.sample_size = sample_size
+        self.cache: dict[float, float] = {}
 
     def __repr__(self) -> str:
         return f"Normal({self.mean, self.scale})"
@@ -99,7 +100,10 @@ class NormalDistribution(IDistribution):
         )
 
     def expected_value_max(self, upper: float) -> float:
-        return float(
+        if upper in self.cache:
+            return self.cache[upper]
+        
+        value = float(
             np.average(
                 np.minimum(
                     np.maximum(
@@ -110,6 +114,9 @@ class NormalDistribution(IDistribution):
                 )
             )
         )
+        self.cache[upper] = value
+        return value
+    
 
     def multiply(self, number: float) -> Self:
         """
