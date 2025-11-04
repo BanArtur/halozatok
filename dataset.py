@@ -109,13 +109,16 @@ class SpiderDataset(GraphDataset):
 
     def generate_graph(self) -> Graph:
         legs = random.randint(self.min_legs, self.max_legs)
-        start = Vertex(self.reward_distribution.sample())
-        result = Graph(start, [start], [])
+        id = 0
+        start = Vertex(id = id, reward=self.reward_distribution.sample())
+        result = Graph(start, {0: start}, {})
         for _ in range(legs):
             length = random.randint(self.min_lenght, self.max_length)
             curr = start
             for _ in range(length):
+                id += 1
                 new = Vertex(
+                    id=id,
                     reward=self.reward_distribution.sample(),
                     ancestor=curr,
                 )
@@ -127,8 +130,8 @@ class SpiderDataset(GraphDataset):
                 curr.out_edges.append(
                     edge
                 )
-                result.edges.append(edge)
-                result.vertices.append(new)
+                result.edges[(edge.origin.id, edge.end.id)] = edge
+                result.vertices[new.id] = new
                 curr = new
         
         return result
@@ -154,12 +157,14 @@ class BoundedTreeDataset(GraphDataset):
         self.beta = beta
     
     def generate_graph(self) -> Graph:
-        start = Vertex(reward=self.reward_distribution.sample(), id=None)
-        out1 = Vertex(reward=self.reward_distribution.sample(), ancestor=start, id=None)
+        id = 0
+        start = Vertex(reward=self.reward_distribution.sample(), id=id)
+        id += 1
+        out1 = Vertex(reward=self.reward_distribution.sample(), ancestor=start, id=id)
         edge = Edge(start, out1, self.edge_distribution_factory())
         start.out_edges.append(edge)
         
-        result = Graph(start, [start, out1], [edge])
+        result = Graph(start, {0: start, 1: out1}, {(0, 1): edge})
         
         todos: list[tuple[Vertex, int]] = [(start, 0), (out1, 1)] # list of (vertex, depth)
         index = 0
@@ -170,18 +175,19 @@ class BoundedTreeDataset(GraphDataset):
                 index += 1
                 continue
             while random.uniform(0, 1) >= halt_prob:
+                id += 1
                 new = Vertex(
                     reward=self.reward_distribution.sample(),
                     ancestor=vertex,
-                    id = None
+                    id = id,
                 )
                 edge = Edge(
                     origin=vertex,
                     end=new,
                     cost_distribution=self.edge_distribution_factory(),
                 )
-                result.edges.append(edge)
-                result.vertices.append(new)
+                result.edges[(edge.origin.id, edge.end.id)] = edge
+                result.vertices[new.id] = new
                 vertex.out_edges.append(edge)
                 todos.append((new, depth + 1))
             index += 1
