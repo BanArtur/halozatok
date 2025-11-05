@@ -187,19 +187,19 @@ def isRisky(T:Graph, v:Vertex, B:float) -> bool:
     return cost(T.start, v, B) > 0.5
     
 
-def spiderNonAdaptive(T:Graph, B:float) -> list[Vertex]:
+def spiderNonAdaptive(T:Graph) -> list[Vertex]:
     T_risky:Graph  = T.copy()
     T_non_risky:Graph = T.copy()
-    for v in T.vertices:
-        if isRisky(v):
-            T_non_risky.vertives[v.id].reward = 0
+    for id, v in T.vertices.items():
+        if isRisky(T, v, B = 1.0):
+            T_non_risky.vertices[id].reward = 0
         else:
-            T_risky.vertices[v.id].reward = 0
-    L_r = risky(T_risky, B = 1, t = 2)
+            T_risky.vertices[id].reward = 0
+    L_r = risky(T_risky, B = 1.0, t = 2)
     R_r = 0.0
     for v in L_r:
         R_r += v.reward
-    L_n = nonRisky(T_non_risky, B=1.0, t=0.5)
+    L_n = nonRisky(T_non_risky, B = 1.0, t=0.5)
     R_n = 0.0
     for v in L_n:
         R_n += v.reward
@@ -208,11 +208,12 @@ def spiderNonAdaptive(T:Graph, B:float) -> list[Vertex]:
     else:
         return L_n
     
-def cost(T: Graph, o:Vertex, e:Vertex, B:float) -> float:
+def cost(o:Vertex, e:Vertex, B:float) -> float:
     sum: float = 0.0
     while e.id != o.id:
         edge = [el for el in e.ancestor.out_edges if el.end.id == e.id][0]
-        sum += edge.cost_distribution.expected_value_max(B) 
+        sum += edge.cost_distribution.expected_value_max(B)
+        e = e.ancestor
     return sum
 
 def costSampling(edges: list[Edge]) -> float:
