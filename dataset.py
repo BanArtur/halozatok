@@ -12,7 +12,6 @@ from graph import Edge, Graph, Vertex
 from serialize import GraphJSONDecoder, GraphJSONEncoder
 
 
-
 # Default configuration parameters for edge distribution generation
 config_path = "dist_config.yaml"
 
@@ -41,12 +40,15 @@ def edge_distribution() -> IDistribution:
             b = random.uniform(bound_min, bound_max)
         return UniformDistribution(min(a, b), max(a, b))
 
+
 class GraphDataset(ABC):
     def __init__(
         self,
         base_folder: str,
         reward_distribution: IDistribution,
-        edge_distribution_factory: Callable[[], IDistribution] = edge_distribution # we can query this function to get distribution of costs for the edges
+        edge_distribution_factory: Callable[
+            [], IDistribution
+        ] = edge_distribution,  # we can query this function to get distribution of costs for the edges
     ):
         self.base_folder = base_folder
 
@@ -110,7 +112,7 @@ class SpiderDataset(GraphDataset):
     def generate_graph(self) -> Graph:
         legs = random.randint(self.min_legs, self.max_legs)
         id = 0
-        start = Vertex(id = id, reward=self.reward_distribution.sample())
+        start = Vertex(id=id, reward=self.reward_distribution.sample())
         result = Graph(start, {0: start}, {})
         for _ in range(legs):
             length = random.randint(self.min_lenght, self.max_length)
@@ -127,14 +129,13 @@ class SpiderDataset(GraphDataset):
                     end=new,
                     cost_distribution=self.edge_distribution_factory(),
                 )
-                curr.out_edges.append(
-                    edge
-                )
+                curr.out_edges.append(edge)
                 result.edges[(edge.origin.id, edge.end.id)] = edge
                 result.vertices[new.id] = new
                 curr = new
-        
+
         return result
+
 
 class BoundedTreeDataset(GraphDataset):
     def __init__(
@@ -148,14 +149,14 @@ class BoundedTreeDataset(GraphDataset):
     ):
         base = os.path.join("datasets", "bounded_trees")
         super().__init__(base, reward_distribution)
-        
+
         self.max_depth = max_depth
         assert halt_prob_min < halt_prob_max
         self.halt_prob_min = halt_prob_min
         self.halt_prob_max = halt_prob_max
         self.B = B
         self.beta = beta
-    
+
     def generate_graph(self) -> Graph:
         id = 0
         start = Vertex(reward=self.reward_distribution.sample(), id=id)
@@ -163,10 +164,13 @@ class BoundedTreeDataset(GraphDataset):
         out1 = Vertex(reward=self.reward_distribution.sample(), ancestor=start, id=id)
         edge = Edge(start, out1, self.edge_distribution_factory())
         start.out_edges.append(edge)
-        
+
         result = Graph(start, {0: start, 1: out1}, {(0, 1): edge})
-        
-        todos: list[tuple[Vertex, int]] = [(start, 0), (out1, 1)] # list of (vertex, depth)
+
+        todos: list[tuple[Vertex, int]] = [
+            (start, 0),
+            (out1, 1),
+        ]  # list of (vertex, depth)
         index = 0
         while index < len(todos):
             halt_prob = random.uniform(self.halt_prob_min, self.halt_prob_max)
@@ -179,7 +183,7 @@ class BoundedTreeDataset(GraphDataset):
                 new = Vertex(
                     reward=self.reward_distribution.sample(),
                     ancestor=vertex,
-                    id = id,
+                    id=id,
                 )
                 edge = Edge(
                     origin=vertex,
@@ -191,11 +195,10 @@ class BoundedTreeDataset(GraphDataset):
                 vertex.out_edges.append(edge)
                 todos.append((new, depth + 1))
             index += 1
-        
+
         result.lower_mu_cost(self.B, self.beta)
         return result
-                
-        
+
 
 if __name__ == "__main__":
     dataset = SpiderDataset(
@@ -226,5 +229,4 @@ if __name__ == "__main__":
     dataset.load_dataset("base")
     print(len(dataset.graphs[5].vertices))
 
-    
-    #print(algorithm.nonRisky(dataset.graphs[1],1,2))
+    # print(algorithm.nonRisky(dataset.graphs[1],1,2))

@@ -39,7 +39,7 @@ class UniformDistribution(IDistribution):
         assert 0 <= lower < upper
         self.lower = lower
         self.upper = upper
-    
+
     def __repr__(self) -> str:
         return f"U({self.lower:.2f}, {self.upper:.2f})"
 
@@ -102,7 +102,7 @@ class NormalDistribution(IDistribution):
     def expected_value_max(self, upper: float) -> float:
         if upper in self.cache:
             return self.cache[upper]
-        
+
         value = float(
             np.average(
                 np.minimum(
@@ -116,7 +116,6 @@ class NormalDistribution(IDistribution):
         )
         self.cache[upper] = value
         return value
-    
 
     def multiply(self, number: float) -> Self:
         """

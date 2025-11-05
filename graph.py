@@ -74,7 +74,7 @@ class Graph:
         root = copy.deepcopy(self.start)
         vertices: dict[int, Vertex] = {}
         edges: dict[tuple[int, int], Edge] = {}
-        
+
         todos: list[Vertex] = [root]
         index = 0
         while index < len(todos):
@@ -84,10 +84,9 @@ class Graph:
                 edges[(edge.origin.id, edge.end.id)] = edge
                 todos.append(edge.end)
             index += 1
-        
+
         return Graph(start=root, vertices=vertices, edges=edges)
-        
-    
+
     def removeVertex(self, vertex: Vertex) -> None:
         # self.check_reachable()
         todos: list[Vertex] = [vertex]
@@ -98,14 +97,16 @@ class Graph:
             for edge in curr.out_edges:
                 del self.edges[(edge.origin.id, edge.end.id)]
                 todos.append(edge.end)
-                
+
             index += 1
-        
+
         parent = vertex.ancestor
         if parent is not None:
-            parent.out_edges = [edge for edge in parent.out_edges if edge.end.id != vertex.id]
+            parent.out_edges = [
+                edge for edge in parent.out_edges if edge.end.id != vertex.id
+            ]
         # self.check_reachable()
-    
+
     def addSubtree(self, T: "Graph", vertex: Vertex) -> None:
         # self.check_reachable()
         if vertex.id not in self.vertices:
@@ -113,16 +114,21 @@ class Graph:
             assert ancestor is not None
             assert ancestor.id in self.vertices
             true_ancestor = self.vertices[ancestor.id]
-            true_vertex = Vertex(id=vertex.id, reward=vertex.reward, ancestor=true_ancestor)
-            true_edge = Edge(true_ancestor, true_vertex, T.edges[(ancestor.id, vertex.id)].cost_distribution)
+            true_vertex = Vertex(
+                id=vertex.id, reward=vertex.reward, ancestor=true_ancestor
+            )
+            true_edge = Edge(
+                true_ancestor,
+                true_vertex,
+                T.edges[(ancestor.id, vertex.id)].cost_distribution,
+            )
             self.edges[(ancestor.id, vertex.id)] = true_edge
             self.vertices[vertex.id] = true_vertex
             true_ancestor.out_edges.append(true_edge)
-        
+
         for edge in vertex.out_edges:
             self.addSubtree(T, edge.end)
-        
-            
+
     def check_reachable(self) -> None:
         all_vert = set(self.vertices)
         reachable = [self.start]
