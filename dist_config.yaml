@@ -1,7 +1,7 @@
 normal_chance: 0.5
-mean_min: 0.2
-mean_max: 2.0
+mean_min: 0.1
+mean_max: 0.7
 scale_min: 0.2
-scale_max: 1.0
-bound_min: 0.5
-bound_max: 3.5
+scale_max: 0.6
+bound_min: 0.2
+bound_max: 0.7

@@ -5,7 +5,7 @@ from typing import Self
 
 import numpy as np
 
-SAMPLE_SIZE = 100_000
+SAMPLE_SIZE = 10_000
 
 
 class IDistribution(ABC):
