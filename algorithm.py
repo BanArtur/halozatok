@@ -3,6 +3,8 @@ import copy
 import pulp
 import random
 
+COST_SAMPLE_SIZE = 100
+
 def expectedCostSubTree(v: Vertex, B: float) -> float:
     sum = 0
     for vc in v.out_edges:
@@ -108,7 +110,7 @@ def nonRisky(T:Graph, B:float,t:float) -> list[Vertex]:
             graphKeys.append(key)
     x = pulp.LpVariable.dicts("VertexesX",T.vertices, lowBound = 0, upBound=1)
     model+=pulp.lpSum(x[id]*T.vertices[id].reward for id in T.vertices.keys())
-    model+=pulp.lpSum(x[id]*T.edges[(T.vertices[id].ancestor.id,id)].cost_distribution.expected_value_max(B) for id in graphKeys ) <= 1
+    model+=pulp.lpSum(x[id]*T.edges[(T.vertices[id].ancestor.id,id)].cost_distribution.expected_value_max(B) for id in graphKeys ) <= t
     for key in graphKeys:
         model+=x[key]<=x[T.vertices[key].ancestor.id]
     model.solve()
@@ -140,54 +142,64 @@ def risky(T:Graph, B:float, t:float) -> list[Vertex]:
         if key!=T.start.id:
             graphKeys.append(key)
     model+=pulp.lpSum([y[id]*T.vertices[id].reward for id in T.vertices.keys()])
-    model+=pulp.lpSum(x[id]*T.edges[(T.vertices[id].ancestor.id,id)].cost_distribution.expected_value_max(1) for id in graphKeys )<=t
-    for id in graphKeys:
-        v_o = T.vertices[id]
+    model+=pulp.lpSum(x[id]*T.edges[(T.vertices[id].ancestor.id,id)].cost_distribution.expected_value_max(B) for id in graphKeys )<=t
+    for id, v_o in T.vertices.items():
         v_r = v_o
         cond = True
+        edges: list[Edge] = []
         while cond:
-            model+=y[id]<=costSampling(T,v_r,v_o,B)*x[v_r.id]
+            model+=y[id]<=costSampling(edges)*x[v_r.id]
             if v_r.ancestor is not None:
+                edges.append(T.edges[(v_r.ancestor.id, v_r.id)])
                 v_r = v_r.ancestor
             else:
                 cond = False
     model.solve()
-    leg:list[Vertex] = []
+    legs: list[tuple[list[Vertex], float]] = []
     for v in T.start.out_edges:
-        leg = []
-        sum = 0
+        leg: list[Vertex] = []
+        s = 0
         v_r = v.end
         cond = True
         while cond:
             leg.append(v_r)
-            sum = pulp.value(x[v.end.id]) * cost(v_r.ancestor,v_r,B)
-            if len(v_r.out_edges)>0:
+            
+            s = pulp.value(x[v.end.id]) * cost(v_r.ancestor,v_r,B)
+            assert len(v_r.out_edges) <= 1
+            
+            if v_r.out_edges:
                 v_r = v_r.out_edges[0].end
             else:
                 cond = False
-        if random.uniform(0,1) < sum/2:
-            return leg
-    return leg
+        legs.append((leg, s))
+    probabilities = [entry[1] for entry in legs]
+    s_prob = sum(probabilities)
+    assert s_prob >= 0
+    if s_prob == 0:
+        return random.choice(legs)[0]
+    else:
+        probabilities = [p / s_prob for p in probabilities]
+        choice = random.choices(legs, weights=probabilities, k=1)[0]
+        return choice[0]
+    
 
 def isRisky(T:Graph, v:Vertex, B:float) -> bool:
-    sumCost=0.0
-    if v.id!=T.start.id:
-        sumCost = cost(v.ancestor, v, B)
-    return sumCost>0.5
+    return cost(T.start, v, B) > 0.5
+    
 
 def spiderNonAdaptive(T:Graph, B:float) -> list[Vertex]:
     T_risky:Graph  = T.copy()
-    T_non:Graph = T.copy()
+    T_non_risky:Graph = T.copy()
     for v in T.vertices:
         if isRisky(v):
-            T_non.vertives[v.id].reward = 0
+            T_non_risky.vertives[v.id].reward = 0
         else:
             T_risky.vertices[v.id].reward = 0
-    L_r = risky(T_risky)
+    L_r = risky(T_risky, B = 1, t = 2)
     R_r = 0.0
     for v in L_r:
         R_r += v.reward
-    L_n = nonRisky(T_non)
+    L_n = nonRisky(T_non_risky, B=1.0, t=0.5)
     R_n = 0.0
     for v in L_n:
         R_n += v.reward
@@ -196,18 +208,19 @@ def spiderNonAdaptive(T:Graph, B:float) -> list[Vertex]:
     else:
         return L_n
     
-def cost(o:Vertex, e:Vertex, B:float) -> float:
-    if o.id == e.id:
-        return 0.0
-    sum:float = 0.0
-    for edge in e.ancestor.out_edges:
-        if edge.end.id == e.id:
-            sum+= edge.cost_distribution.expected_value_max(B)
-    return sum+cost(o,e.ancestor,B)
+def cost(T: Graph, o:Vertex, e:Vertex, B:float) -> float:
+    sum: float = 0.0
+    while e.id != o.id:
+        edge = [el for el in e.ancestor.out_edges if el.end.id == e.id][0]
+        sum += edge.cost_distribution.expected_value_max(B) 
+    return sum
 
-def costSampling(g:Graph, v1:Vertex, v2:Vertex, B:float) -> float:
-    sum = 0
-    for i in range(100):
-        if cost(v1,v2,B)<=1:
-            sum+=1
-    return sum/100
+def costSampling(edges: list[Edge]) -> float:
+    s = 0
+    for _ in range(COST_SAMPLE_SIZE):
+        if sum([
+            edge.cost_distribution.sample()
+            for edge in edges
+        ]) <= 1:
+            s += 1
+    return s/COST_SAMPLE_SIZE
