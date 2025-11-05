@@ -41,7 +41,7 @@ class UniformDistribution(IDistribution):
         self.upper = upper
     
     def __repr__(self) -> str:
-        return f"Uniform({self.lower, self.upper})"
+        return f"Uniform({self.lower:.2f}, {self.upper:.2f})"
 
     def sample(self) -> float:
         return random.uniform(self.lower, self.upper)
@@ -85,7 +85,7 @@ class NormalDistribution(IDistribution):
         self.cache: dict[float, float] = {}
 
     def __repr__(self) -> str:
-        return f"Normal({self.mean, self.scale})"
+        return f"Normal({self.mean:.2f}, {self.scale:.2f})"
 
     def sample(self) -> float:
         return max(0.0, np.random.normal(self.mean, self.scale))

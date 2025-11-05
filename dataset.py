@@ -10,9 +10,6 @@ import yaml
 from distribution import IDistribution, NormalDistribution, UniformDistribution
 from graph import Edge, Graph, Vertex
 from serialize import GraphJSONDecoder, GraphJSONEncoder
-from visualize import GraphVisualization
-import matplotlib as plt
-from matplotlib.widgets import Button
 
 import algorithm
 
@@ -230,38 +227,5 @@ if __name__ == "__main__":
     dataset.load_dataset("base")
     print(len(dataset.graphs[5].vertices))
 
-    """
-    graphs : list[Graph]
-
-    current = 0
     
-    def drawGraph(index):
-        G = GraphVisualization()
-        G.buildFromGraph(graphs[current])
-        G.visualize()
-    
-    def nextGraph(event):
-        global current
-        if current<len(graphs)-1:
-            current+=1
-        drawGraph(current)
-
-    def prevGraph(event):
-        global current
-        if current >0:
-            current-=1
-        drawGraph(current)
-
-    axprev = plt.axes([0.3, 0.05, 0.1, 0.075])
-    axnext = plt.axes([0.6, 0.05, 0.1, 0.075])
-    bnext = Button(axnext, 'Következő')
-    bprev = Button(axprev, 'Előző')
-    bnext.on_clicked(nextGraph)
-    bprev.on_clicked(prevGraph)
-    """
-    """
-    G = GraphVisualization()
-    G.buildFromGraph(dataset.graphs[0])
-    G.visualize()
-    """
-    print(algorithm.nonRisky(dataset.graphs[1],1,2))
+    #print(algorithm.nonRisky(dataset.graphs[1],1,2))

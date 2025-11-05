@@ -72,7 +72,7 @@ def run_list_model(T: Graph, strategy: list[int], B: float = 1.0) -> tuple[list[
     T = T.copy()
     R: float = 0.0
     budget: float = 0.0
-    colors: dict[int, str] = {v: "white" for v in T.vertices}
+    colors: dict[int, str] = {v: "lightgray" for v in T.vertices}
     history: list[tuple[int, dict[int, str]]] = []
     for id in strategy:
         if id == T.start.id:
