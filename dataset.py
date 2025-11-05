@@ -11,7 +11,6 @@ from distribution import IDistribution, NormalDistribution, UniformDistribution
 from graph import Edge, Graph, Vertex
 from serialize import GraphJSONDecoder, GraphJSONEncoder
 
-import algorithm
 
 
 # Default configuration parameters for edge distribution generation

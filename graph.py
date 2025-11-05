@@ -89,7 +89,7 @@ class Graph:
         
     
     def removeVertex(self, vertex: Vertex) -> None:
-        self.check_reachable()
+        # self.check_reachable()
         todos: list[Vertex] = [vertex]
         index = 0
         while index < len(todos):
@@ -104,10 +104,10 @@ class Graph:
         parent = vertex.ancestor
         if parent is not None:
             parent.out_edges = [edge for edge in parent.out_edges if edge.end.id != vertex.id]
-        self.check_reachable()
+        # self.check_reachable()
     
     def addSubtree(self, T: "Graph", vertex: Vertex) -> None:
-        self.check_reachable()
+        # self.check_reachable()
         if vertex.id not in self.vertices:
             ancestor = vertex.ancestor
             assert ancestor is not None
@@ -120,19 +120,10 @@ class Graph:
             true_ancestor.out_edges.append(true_edge)
         
         for edge in vertex.out_edges:
-            self.check_reachable()
             self.addSubtree(T, edge.end)
-        try:
-            self.check_reachable()
-        except Exception as e:
-            print()
-            print()
-            print(vertex.id)
-            print()
-            raise e
+        
             
     def check_reachable(self) -> None:
-        return # For debugging
         all_vert = set(self.vertices)
         reachable = [self.start]
         idx = 0

@@ -14,6 +14,31 @@ def expectedCostSubTree(v: Vertex, B: float) -> float:
 def maxCostChild(v:Vertex, B:float) -> tuple[Vertex,float]:
     return max([(edge.end, expectedCostSubTree(edge.end, B)) for edge in v.out_edges], key=lambda x: x[1])
 
+def prepare_decompose(T: Graph) -> Graph:
+    x = LPHat(T, B=1.0, t=0.5)
+    root = Vertex(T.start.id, T.start.reward, ancestor=None)
+    todos: list[int] = [root.id]
+    index = 0
+    new_graph = Graph(start=root, vertices={root.id: root}, edges={})
+    while index < len(todos):
+        id = todos[index]
+        current = new_graph.vertices[id]
+        big_vertex = T.vertices[id]
+        for edge in big_vertex.out_edges:
+            candidate = edge.end
+            if pulp.value(x[candidate.id]) > 0:
+                todos.append(candidate.id)
+                new = Vertex(candidate.id, reward=candidate.reward, ancestor=current)
+                new_graph.vertices[new.id] = new
+                new_edge = Edge(current, new, edge.cost_distribution)
+                current.out_edges.append(new_edge)
+                new_graph.edges[(current.id, new.id)] = new_edge
+                
+        index += 1
+    
+    new_graph.check_reachable()
+    return new_graph
+
 def treeDecompose(To:Graph,beta:float,B:float)->list[Graph]:
     T = To.copy()
     epsilon = 1-beta
@@ -55,18 +80,18 @@ def treeDecompose(To:Graph,beta:float,B:float)->list[Graph]:
     return S
 
 def transform_to_list(sub_graphs: list[Graph]) -> list[int]:
+    graph = random.choice(sub_graphs)
     result: list[int] = []
-    for graph in sub_graphs:
-        root = graph.start
-        todos: list[Vertex] = [root]
-        index = 0
-        while index < len(todos):
-            vertex = todos[index]
-            if vertex.id not in result:
-                result.append(vertex.id)
-            for edge in vertex.out_edges:
-                todos.append(edge.end)
-            index += 1
+    root = graph.start
+    todos: list[Vertex] = [root]
+    index = 0
+    while index < len(todos):
+        vertex = todos[index]
+        if vertex.id not in result:
+            result.append(vertex.id)
+        for edge in vertex.out_edges:
+            todos.append(edge.end)
+        index += 1
         
     return result
 
@@ -99,9 +124,8 @@ def run_list_model(T: Graph, strategy: list[int], B: float = 1.0) -> tuple[list[
             colors = dict(colors)
     
     return history, budget, R
-        
 
-def nonRisky(T:Graph, B:float,t:float) -> list[Vertex]:
+def LPHat(T: Graph, B:float, t:float) -> dict[int, float]:
     model = pulp.LpProblem("Maximalization", pulp.LpMaximize)
     x={}
     graphKeys = []
@@ -114,6 +138,10 @@ def nonRisky(T:Graph, B:float,t:float) -> list[Vertex]:
     for key in graphKeys:
         model+=x[key]<=x[T.vertices[key].ancestor.id]
     model.solve()
+    return x
+
+def nonRisky(T:Graph, B:float,t:float) -> list[Vertex]:
+    x = LPHat(T, B, t)
     T_1:list[Vertex] = []
     T_2:list[Vertex] = []
     R_1 = 0
@@ -187,7 +215,7 @@ def isRisky(T:Graph, v:Vertex, B:float) -> bool:
     return cost(T.start, v, B) > 0.5
     
 
-def spiderNonAdaptive(T:Graph) -> list[Vertex]:
+def spiderNonAdaptive(T:Graph) -> list[int]:
     T_risky:Graph  = T.copy()
     T_non_risky:Graph = T.copy()
     for id, v in T.vertices.items():
@@ -204,9 +232,12 @@ def spiderNonAdaptive(T:Graph) -> list[Vertex]:
     for v in L_n:
         R_n += v.reward
     if R_r > R_n:
-        return L_r
+        better = L_r
     else:
-        return L_n
+        better = L_n
+        
+    return [vertex.id for vertex in better]
+        
     
 def cost(o:Vertex, e:Vertex, B:float) -> float:
     sum: float = 0.0
