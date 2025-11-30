@@ -40,20 +40,20 @@ def get_dataset(g_type: str) -> GraphDataset:
         raise ValueError(f"No known type named: {g_type}")
 
 
-def solve_bounded_trees(graph: Graph) -> list[tuple[Graph, dict[int, str]]]:
+def solve_bounded_trees(graph: Graph) -> tuple[list[tuple[Graph, dict[int, str]]], float, float]:
     T = prepare_decompose(graph)
     decomposed = treeDecompose(T, 0.9, 1)
     list_strategy = transform_to_list(decomposed)
     history = run_list_model(T, list_strategy)
-    return history[0]
+    return history
 
 
-def solve_spider_graphs(graph: Graph) -> list[tuple[Graph, dict[int, str]]]:
+def solve_spider_graphs(graph: Graph) -> tuple[list[tuple[Graph, dict[int, str]]], float, float]:
     list_strategy = spiderNonAdaptive(graph)
     if not list_strategy or list_strategy[0] != 0:
         list_strategy = [0] + list_strategy
     history = run_list_model(graph, list_strategy)
-    return history[0]
+    return history
 
 
 def show(list_model: list[tuple[Graph, dict[int, str]]]):
