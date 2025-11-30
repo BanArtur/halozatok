@@ -15,6 +15,8 @@ import networkx as nx
 
 from graph import Graph
 
+import json
+
 
 def get_dataset(g_type: str) -> GraphDataset:
     if g_type == "bounded":
@@ -140,7 +142,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main_phase2():
     args = parse_args()
 
     spider_best = [0, 9, 10]
@@ -158,6 +160,33 @@ def main():
     )
     show(history)
 
+def main_phase3():
+    dataset_spider = get_dataset("spider")
+    dataset_bounded = get_dataset("bounded")
+
+    spider_dict = {}
+    for graph_index in range(len(dataset_spider.graphs)):
+        spider_dict[graph_index] = {}
+        for epsilon in [0.01, 0.1, 0.25, 0.5, 0.75, 0.99]:
+            result = 0
+            for _ in range(100):
+                graph = dataset_spider.graphs[graph_index].copy()
+                history = solve_spider_graphs(dataset_spider.graphs[graph_index])
+            result /= 100
+            spider_dict[graph_index][epsilon] = result
+    with open('spider_results.json', 'w') as fs:
+        json.dump(spider_dict,fs)
+    
+    bounded_dict = {}
+    for graph_index in range(len(dataset_bounded.graphs)):
+        result = 0
+        for _ in range(100):
+            history = solve_bounded_trees(dataset_bounded.graphs[graph_index])
+        result /= 100
+        bounded_dict[graph_index] = result
+    with open('bounded_results.json','w') as fb:
+        json.dump(bounded_dict,fb)
+
 
 if __name__ == "__main__":
-    main()
+    main_phase3()
