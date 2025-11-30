@@ -201,6 +201,7 @@ class BoundedTreeDataset(GraphDataset):
 
 
 if __name__ == "__main__":
+    """
     dataset = SpiderDataset(
         reward_distribution=NormalDistribution(0.4, 1.3),
         min_legs=2,
@@ -209,24 +210,26 @@ if __name__ == "__main__":
         max_length=5,
     )
     """
+    """
     
     dataset.generate_dataset(1000)
     dataset.save_dataset("base")
     """
-    """
-    dataset = BoundedTreeDataset(
-        reward_distribution=NormalDistribution(0.4, 1.3),
-        max_depth=6,
-        halt_prob_min=0.25,
-        halt_prob_max=0.75,
-        B=6,
-        beta=8,
-    )
-    dataset.generate_dataset(1000)
-    dataset.save_dataset("base")
-    """
+    
+    for beta in [0.3, 0.5, 0.7, 0.8, 0.9, 0.95]:
+        dataset = BoundedTreeDataset(
+            reward_distribution=NormalDistribution(0.4, 1.3),
+            max_depth=7,
+            halt_prob_min=0.25,
+            halt_prob_max=0.75,
+            B=1,
+            beta=beta,
+        )
+        dataset.generate_dataset(1000)
+        dataset.save_dataset(f"data_{beta=}")
+    
 
-    dataset.load_dataset("base")
-    print(len(dataset.graphs[5].vertices))
+    # dataset.load_dataset("base")
+    # print(len(dataset.graphs[5].vertices))
 
     # print(algorithm.nonRisky(dataset.graphs[1],1,2))
