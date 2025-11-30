@@ -51,6 +51,22 @@ class Graph:
             index += 1
 
         return max([cost for _, cost in todos])
+    
+    def expected_value_max(self, upper) -> float:
+        result = 0.0
+        for edge in self.edges.values():
+            result += edge.cost_distribution.expected_value_max(upper)
+        return result
+
+    def depth(self) -> int:
+        todos = [(self.start, 0)]
+        idx = 0
+        while idx < len(todos):
+            curr, depth = todos[idx]
+            for out in curr.out_edges:
+                todos.append((out.end, depth + 1))
+            idx += 1
+        return max([entry[1] for entry in todos])
 
     def lower_mu_cost(self, B: float, beta: float) -> None:
         """

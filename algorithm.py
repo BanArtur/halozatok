@@ -23,7 +23,7 @@ def maxCostChild(v: Vertex, B: float) -> tuple[Vertex, float]:
 
 
 def prepare_decompose(T: Graph) -> Graph:
-    x = LPHat(T, B=1.0, t=0.5)
+    x = LPHat(T, B=1.0, t=2)
     root = Vertex(T.start.id, T.start.reward, ancestor=None)
     todos: list[int] = [root.id]
     index = 0
@@ -111,7 +111,12 @@ def transform_to_list(sub_graphs: list[Graph]) -> list[int]:
 def run_list_model(
     T: Graph, strategy: list[int], B: float = 1.0
 ) -> tuple[list[tuple[Graph, dict[int, str]]], float, float]:
+    # assert len(T.vertices) > 1
+    # assert len(T.edges) > 0
     T = T.copy()
+    # assert len(T.vertices) > 1
+    # assert len(T.edges) > 0
+    
     R: float = 0.0
     budget: float = 0.0
     colors: dict[int, str] = {v: "lightgray" for v in T.vertices}
@@ -184,8 +189,7 @@ def nonRisky(T: Graph, B: float, t: float) -> list[Vertex]:
     else:
         return T_2
 
-
-def risky(T: Graph, B: float, t: float) -> list[Vertex]:
+def LP(T: Graph, B: float, t: float):
     model = pulp.LpProblem("Maximalization", pulp.LpMaximize)
     x = {}
     y = {}
@@ -218,6 +222,13 @@ def risky(T: Graph, B: float, t: float) -> list[Vertex]:
             else:
                 cond = False
     model.solve()
+    return x, y
+
+def risky(T: Graph, B: float, t: float) -> tuple[list[Vertex], float]:
+    x, y = LP(T, B, t)
+    optimal_upper = 0.0
+    for id, vertex in T.vertices.items():
+        optimal_upper += pulp.value(x[id] * vertex.reward)
     legs: list[tuple[list[Vertex], float]] = []
     for v in T.start.out_edges:
         leg: list[Vertex] = []
@@ -239,18 +250,20 @@ def risky(T: Graph, B: float, t: float) -> list[Vertex]:
     s_prob = sum(probabilities)
     assert s_prob >= 0
     if s_prob == 0:
-        return random.choice(legs)[0]
+        result = random.choice(legs)[0]
     else:
         probabilities = [p / s_prob for p in probabilities]
         choice = random.choices(legs, weights=probabilities, k=1)[0]
-        return choice[0]
+        result = choice[0]
+    
+    return result, optimal_upper
 
 
 def isRisky(T: Graph, v: Vertex, B: float) -> bool:
     return cost(T.start, v, B) > 0.5
 
 
-def spiderNonAdaptive(T: Graph) -> list[int]:
+def spiderNonAdaptive(T: Graph) -> tuple[list[int], float]:
     T_risky: Graph = T.copy()
     T_non_risky: Graph = T.copy()
     for id, v in T.vertices.items():
@@ -258,7 +271,7 @@ def spiderNonAdaptive(T: Graph) -> list[int]:
             T_non_risky.vertices[id].reward = 0
         else:
             T_risky.vertices[id].reward = 0
-    L_r = risky(T_risky, B=1.0, t=2)
+    L_r, opt_upper = risky(T_risky, B=1.0, t=2)
     R_r = 0.0
     for v in L_r:
         R_r += v.reward
@@ -271,7 +284,7 @@ def spiderNonAdaptive(T: Graph) -> list[int]:
     else:
         better = L_n
 
-    return [vertex.id for vertex in better]
+    return [vertex.id for vertex in better], opt_upper
 
 
 def cost(o: Vertex, e: Vertex, B: float) -> float:

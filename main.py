@@ -1,5 +1,11 @@
 import argparse
+from collections import defaultdict
+from typing import Any
+
+import pulp
+from tqdm import tqdm
 from algorithm import (
+    LP,
     prepare_decompose,
     run_list_model,
     spiderNonAdaptive,
@@ -14,6 +20,8 @@ from matplotlib.widgets import Button
 import networkx as nx
 
 from graph import Graph
+
+# import matplotlib as plt
 
 import json
 
@@ -40,20 +48,22 @@ def get_dataset(g_type: str) -> GraphDataset:
         raise ValueError(f"No known type named: {g_type}")
 
 
-def solve_bounded_trees(graph: Graph) -> tuple[list[tuple[Graph, dict[int, str]]], float, float]:
+def solve_bounded_trees(graph: Graph, beta: float) -> tuple[tuple[list[tuple[Graph, dict[int, str]]], float, float], float]:
     T = prepare_decompose(graph)
-    decomposed = treeDecompose(T, 0.9, 1)
+    decomposed = treeDecompose(T, beta, 1)
     list_strategy = transform_to_list(decomposed)
+    assert len(T.edges) > 0
+    assert len(T.vertices) > 1
     history = run_list_model(T, list_strategy)
-    return history
+    return history, len(decomposed)
 
 
-def solve_spider_graphs(graph: Graph) -> tuple[list[tuple[Graph, dict[int, str]]], float, float]:
-    list_strategy = spiderNonAdaptive(graph)
+def solve_spider_graphs(graph: Graph, B: float = 1.0) -> tuple[tuple[list[tuple[Graph, dict[int, str]]], float, float], float]:
+    list_strategy, optimal_upper = spiderNonAdaptive(graph)
     if not list_strategy or list_strategy[0] != 0:
         list_strategy = [0] + list_strategy
-    history = run_list_model(graph, list_strategy)
-    return history
+    history = run_list_model(graph, list_strategy, B=B)
+    return history, optimal_upper
 
 
 def show(list_model: list[tuple[Graph, dict[int, str]]]):
@@ -161,33 +171,110 @@ def main_phase2():
     show(history)
 
 def main_phase3():
-    dataset_spider = get_dataset("spider")
-    dataset_bounded = get_dataset("bounded")
+    dataset_spider = SpiderDataset(
+        reward_distribution=NormalDistribution(0.4, 1.3),
+        min_legs=2,
+        max_legs=10,
+        min_lenght=1,
+        max_length=5,
+    )
+    dataset_spider.load_dataset("real")
 
-    spider_dict = {}
-    for graph_index in range(len(dataset_spider.graphs)):
-        spider_dict[graph_index] = {}
+    spider_data: list[dict[str, Any]] = []
+    for graph_idx, data_graph in enumerate(dataset_spider.graphs[:100]):
+        depth = data_graph.depth()
         for epsilon in [0.01, 0.1, 0.25, 0.5, 0.75, 0.99]:
-            result = 0
-            graph_list = []
-            for _ in range(100):
-                graph = dataset_spider.graphs[graph_index].copy()
-                history = solve_spider_graphs(dataset_spider.graphs[graph_index])
-                graph_list.append(history[-1])
-            result /= 100
-            spider_dict[graph_index][epsilon] = result
-    with open('spider_results.json', 'w') as fs:
-        json.dump(spider_dict,fs)
+            runs = []
+            best_upper = None
+            
+            for _ in tqdm(range(25)):
+                graph = data_graph.copy()
+                history, best_upper = solve_spider_graphs(graph, B=1+epsilon)
+                runs.append(history[-1])
+            assert best_upper is not None
+            spider_data.append({
+                "epsilon": epsilon,
+                "nonadaptive_runs": runs,
+                "adaptive_upper_bound": best_upper,
+                "alpha": epsilon / 24,
+                "vertices": len(data_graph.vertices),
+                "depth": depth,
+                "legs": len(data_graph.start.out_edges),
+                "graph_index": graph_idx,
+            })
+            avg = sum(runs) / len(runs)
+            assert avg >= spider_data[-1]["adaptive_upper_bound"] * spider_data[-1]["alpha"]
+            #spider_dict[graph_index][epsilon] = avg / best_upper * 24 / epsilon
+            
+    with open('spider_data.json', 'w') as fs:
+        json.dump(spider_data, fs, indent=2)
     
-    bounded_dict = {}
-    for graph_index in range(len(dataset_bounded.graphs)):
-        result = 0
-        for _ in range(100):
-            history = solve_bounded_trees(dataset_bounded.graphs[graph_index])
-        result /= 100
-        bounded_dict[graph_index] = result
-    with open('bounded_results.json','w') as fb:
-        json.dump(bounded_dict,fb)
+    # plt.scatter(
+    #     [x for val in spider_dict.values() for x, y in val.items()],
+    #     [y for val in spider_dict.values() for x, y in val.items()]
+    # )
+    # plt.plot([i / 1000 for i in range(1000)], [1 for _ in range(1000)])
+    # plt.show()
+    
+    
+    bounded_data: list[dict[str, Any]] = []
+    Bs = [0.3, 0.5, 0.7, 0.9, 0.95]
+    for beta in Bs:
+        dataset_bounded = BoundedTreeDataset(
+            reward_distribution=NormalDistribution(0.4, 1.3),
+            max_depth=7,
+            halt_prob_min=0.25,
+            halt_prob_max=0.75,
+            B=1,
+            beta=beta,
+        )
+        dataset_bounded.load_dataset(f"data_{beta=}")
+        
+        epsilon = 1 - beta
+        for graph_idx, data_graph in enumerate(dataset_bounded.graphs[:100]):
+            depth = data_graph.depth()
+            
+            x, y = LP(data_graph, B=1, t=2)
+            optimal_upper = 0.0
+            for id, vertex in data_graph.vertices.items():
+                optimal_upper += pulp.value(x[id] * vertex.reward)
+            runs: list[float] = []
+            lens_and_max: list[tuple[float, float]] = []
+            
+            mu = data_graph.expected_value_max(upper=1)
+            
+            for _ in tqdm(range(25)):
+                graph = data_graph.copy()
+                assert len(graph.vertices) > 1
+                history, len_of_decomp = solve_bounded_trees(graph, beta=beta)
+                assert len_of_decomp < 2 * mu / (epsilon / 2)
+                runs.append(history[-1])
+                lens_and_max.append((len_of_decomp, 2 * mu / (epsilon / 2)))
+                    
+            bounded_data.append({
+                "epsilon": epsilon,
+                "nonadaptive_runs": runs,
+                "adaptive_upper_bound": optimal_upper,
+                "alpha": (epsilon * epsilon) / (16 * (1 + 1)), # Theorem 13
+                "lens_and_max": lens_and_max,
+                "vertices": len(data_graph.vertices),
+                "depth": depth,
+                "graph_index": graph_idx,
+                
+            })
+            avg = sum(runs) / len(runs)
+            assert avg >= bounded_data[-1]["adaptive_upper_bound"] * bounded_data[-1]["alpha"]
+            # bounded_dict[epsilon].append(avg / optimal_upper * 16 * (1 + 1) / (epsilon * epsilon))
+    
+    with open('bounded_data.json','w') as fb:
+        json.dump(bounded_data, fb, indent=2)
+    
+    # plt.scatter(
+    #     [eps for eps, entry in bounded_dict.items() for y in entry],
+    #     [y for eps, entry in bounded_dict.items() for y in entry]
+    # )
+    # plt.plot([i / 1000 for i in range(1000)], [1 for _ in range(1000)])
+    # plt.show()
 
 
 if __name__ == "__main__":

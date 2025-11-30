@@ -74,7 +74,7 @@ class NormalDistribution(IDistribution):
     """
 
     def __init__(
-        self, mean: float, scale: float, sample_size: int = SAMPLE_SIZE
+        self, mean: float, scale: float, sample_size: int = SAMPLE_SIZE, minima: float = 0.0,
     ) -> None:
         assert 0 <= mean
         assert 0 < scale
@@ -83,12 +83,13 @@ class NormalDistribution(IDistribution):
         self.scale = scale
         self.sample_size = sample_size
         self.cache: dict[float, float] = {}
+        self.minima = minima
 
     def __repr__(self) -> str:
         return f"N({self.mean:.2f}, {self.scale:.2f})"
 
     def sample(self) -> float:
-        return max(0.0, np.random.normal(self.mean, self.scale))
+        return max(self.minima, np.random.normal(self.mean, self.scale))
 
     def expected_value(self) -> float:
         return float(

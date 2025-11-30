@@ -218,7 +218,7 @@ if __name__ == "__main__":
     
     for beta in [0.3, 0.5, 0.7, 0.8, 0.9, 0.95]:
         dataset = BoundedTreeDataset(
-            reward_distribution=NormalDistribution(0.4, 1.3),
+            reward_distribution=NormalDistribution(0.8, 0.6, minima=0.1),
             max_depth=7,
             halt_prob_min=0.25,
             halt_prob_max=0.75,
