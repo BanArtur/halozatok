@@ -169,9 +169,11 @@ def main_phase3():
         spider_dict[graph_index] = {}
         for epsilon in [0.01, 0.1, 0.25, 0.5, 0.75, 0.99]:
             result = 0
+            graph_list = []
             for _ in range(100):
                 graph = dataset_spider.graphs[graph_index].copy()
                 history = solve_spider_graphs(dataset_spider.graphs[graph_index])
+                graph_list.append(history[-1])
             result /= 100
             spider_dict[graph_index][epsilon] = result
     with open('spider_results.json', 'w') as fs:
