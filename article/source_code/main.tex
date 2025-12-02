@@ -1,0 +1,229 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+\title{A Report on Stochastic Graph Exploration with Limited Resources}
+\author{Art\'ur B\'anlaki, \'Abel Nagy, D\'aniel Kelemen}
+\date{December 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The report was made based on the article \textbf{\textit{"Stochastic Graph Exploration with Limited
+Resources"}} written by Ilan Reuven Cohen \cite{cohen2022stochastic}. In short the paper analyzed a problem for stochastic graph exploration where we aim to maximize the reward on the reached vertices, but staying under the budget. The rewards are known for the vertices, but unknown for the edges. While an \emph{adaptive} strategy might yield the optimal reward, the authors argued that it is impractical in parallel settings and for some large graphs. They examined 2 families of graphs and provided non-adaptive algorithms to solve it with similar performance.
+
+We implemented a simulation framework in \textbf{Python} and used large datasets to validate the claims of the paper. 
+
+\section{The Stochastic Graph Exploration Model}
+\subsection{Problem Setting}
+An instance of the stochastic exploration problem consists of:
+\begin{itemize}
+    \item A directed tree \(G=(V,E)\) rooted at \(r\).
+    \item Each vertex \(v \in V\) has a deterministic reward \(R(v)\).
+    \item Each edge \(e \in E\) has a random cost drawn from a known distribution \(\pi(e)\).
+    \item A total budget \(B\) limits how large the costs can be.
+\end{itemize}
+A strategy (adaptive or non-adaptive) constructs a connected subtree step by step \(F\subset V\) containing the root by probing edges one at a time. When the cost of a newly probed edge pushes the total above \(B\), the process stops immediately, not counting the critical vertice`s reward.
+
+The goal is to \textbf{maximize expected total reward} from all vertices successfully added before halting.
+\subsection{Adaptive vs. Non-Adaptive Strategies}
+\begin{itemize}
+    \item \textbf{Adaptive strategy}: chooses the next edge based on outcomes seen so far.
+    \item \textbf{Non-adaptive strategy}: Probes edges on a fixed order, we call this a list strategy.
+\end{itemize}
+The author’s work shows that some \textbf{non-adaptive strategies require augmentation}. Otherwise if the budget remains only budget \(B\), the adaptivity gap can be \(\Omega(n)\). But with a constant budget augmentation constant reward approximation is possible for the 2 graph families:
+\begin{enumerate}
+    \item \textbf{Spider graphs} (\cref{sec:spider}): starting from a central root, much like a star graph, but with the arms having multiple vertices in succession. These graphs usually appear in scheduling.
+    \item \textbf{Bounded depth trees} (\cref{sec:bounded}): directed tree graph where every vertex is reachable from the root. These graphs are common in social networks (6 handshake theory).
+\end{enumerate}
+
+\subsection{Performance Guarantees}
+In the paper \textbf{Lemma 2} uses linear programming to provide an upper bound for \emph{any} adaptive strategy. The author's prove that their algorithm can perform on average at least $\alpha\cdot R$ with $\beta\cdot B$ budget where $R$ is the maximal expected reward from \textbf{Lemma 2}. Specifically the authors claim the following:
+\begin{enumerate}
+    \item Spider graphs: $O(\frac{24}{\epsilon}, 1+\epsilon)$ algorithm for $\epsilon<1$
+    \item Bounded: $\alpha=\frac{16(B+1)}{\epsilon^2}$ for $B$ budget.
+\end{enumerate}
+
+\section{Code Overview}
+We made an implementation of the algorithms described in the paper. This included classes that allowed the construction and handling of graphs of the given properties with randomized edge weights and rewards. Linear programming tasks are calculated with PuLP \cite{pulp}.
+
+In addition, we made tools to aid our work with the algorithm: a way to generate, save, and load datasets for testing purposes, and a way to visualize how the algorithm works on graphs.
+
+We also used Matplotlib \cite{matplotlib} to visualize the testing results.
+
+\section{Spider Graphs}\label{sec:spider}
+\subsection{Structure and Importance}
+A spider graph (or spider tree) consists of a root and multiple linear legs, each a simple path. Spider graphs are used to depict many practical scheduling and exploration scenarios where tasks or nodes must be visited in a fixed order.
+
+\subsection{Algorithmic Approach}
+The algorithm divides vertices into:
+\begin{itemize}
+    \item \textbf{Risky vertices}: Nodes whose expected path cost from root is higher than \(\frac{B}{2}\). Only one such leg can be probed with high success probability; thus the algorithm picks a leg with a set chance based on LP-derived values.
+    \item \textbf{Non-risky vertices}: Nodes with safer paths, where the expected cost of exploration to the node is less than \(0.5B\). These are handled using a set strategy derived from the structure of the LP relaxation.
+\end{itemize}
+The algorithm outputs the better expected performer of:
+\begin{itemize}
+    \item a list strategy for risky vertices (budget \((1+\epsilon)B\)) for some $0<\epsilon<1$
+    \item a set strategy for non-risky vertices.
+\end{itemize}
+
+\subsection{Experimental Dataset}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{s_vertices.png}
+    \caption{Spider graph experimental dataset}
+    \label{fig:s_vertices}
+\end{figure}
+We randomly generated roughly 600 graphs of varying sizes to run the implemented algorithm with. The distribution of the graph sizes is shown in \cref{fig:s_vertices}.
+We first generate uniformly the number of the legs $2-10$ and each with the length from $1-7$.
+
+\subsection{Testing the theorem}
+We first measure how the \(0<\epsilon<1\) parameter affects the output of the algorithm by running each graph through it with 6 distinct
+$$\epsilon\in\{0.01, 0.1, 0.25, 0.5, 0.75, 0.99\}$$
+After the non-adaptive strategy is calculated, we run the actual exploration 10 times and use the obtained reward values to calculate how they compares to the theoretical minimum bound of the non-adaptive algorithm accounting for the number of vertices in the graph. This theoretical minimum is calculated as \(\frac{\Phi_{I,1}(t)}{\alpha}\) due to the definition given in (\(\alpha,\beta\))-approximations.
+
+The author defines \(\alpha\) for his non-adaptive spider graph algorithm as \(\frac{24}{\epsilon}\) in his \textit{Theorem 11}\cite{cohen2022stochastic}.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\linewidth]{s_epsz001.png}
+    \includegraphics[width=0.49\linewidth]{s_epsz01.png}
+    \caption{Proposed minimal vs actual minimum, mean and maximum gain for low \(\epsilon\) values}
+    \label{fig:s_loweps}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\linewidth]{s_epsz025.png}
+    \includegraphics[width=0.49\linewidth]{s_epsz05.png}
+    \caption{Proposed minimal vs actual minimum, mean and maximum gain for medium \(\epsilon\) values}
+    \label{fig:s_mideps}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\linewidth]{s_epsz075.png}
+    \includegraphics[width=0.49\linewidth]{s_epsz099.png}
+    \caption{Proposed minimal vs actual minimum, mean and maximum gain for high \(\epsilon\) values}
+    \label{fig:s_higheps}
+\end{figure}
+
+The figures \cref{fig:s_loweps},\cref{fig:s_mideps},\cref{fig:s_higheps} show a logarithmic scale on the y axis, which is the actual obtained reward divided by the theoretical minimum. This shows that for lower \(\epsilon\) values, a larger multiplicate of the minimal fraction is obtained, which is important, but since the theoretical minimum contains \(\epsilon\) as a multiplier, this does not show a direct improvement for actual rewards obtained in case of lower \(\epsilon\) values.
+
+What these graphs show, is that for even the worst actual performance of the strategies obtained from the algorithm - which are shown as red dots - the fraction does not tend below 1 - which is shown as a dotted line. This proves that for all epsilon values the theorem holds, and the theoretical minimum stays an actual minimum to the performance.
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{s_rew_per_budget.png}
+    \caption{Rewards obtained adjusted for \(\epsilon\)}
+    \label{fig:s_rwbudget}
+\end{figure}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{s_rew_per_vertex.png}
+    \caption{Rewards obtained per vertex count adjusted for \(\epsilon\)}
+    \label{fig:s_rwvertex}
+\end{figure}
+
+As for the \(\beta\) value of the constant-constant approximation, the author defines it as \(1+\epsilon\), meaning the budget needs augmentation, and this the resulting rewards obtained need to be adjusted for it.
+
+Figure \cref{fig:s_rwbudget} shows that for the experimental graphs used, we obtained less reward per budget used for higher values of $\epsilon$. 
+
+Figure \cref{fig:s_rwvertex} shows us that for each vertex a graph contains, more of the rewards could be obtained for higher values of $\epsilon$.
+
+In conclusion, the reward per unit of budget decreased by 25\% and reward per vertex increased by 32\% linearly over the possible values of $\epsilon$. This means, that for non-edge-case scenarios, all $\epsilon$ values work similarly with budget being traded for rewards. \textbf{This is in line with what we can infer from \textit{Theorem 11}\cite{cohen2022stochastic}}. 
+
+\subsection{Result Analysis}
+
+We also tried to analyze how the graphs layout influences the obtained rewards, regardless of the values of $\epsilon$. Figure \cref{fig:s_rwlegdepth} shows
+\begin{enumerate}
+    \item that the number of legs does not have a major influence on the total reward gained per graph. The increase in mean rewards obtained is minimal, while there are outcrops along the data.
+    \item that the depth of graphs does correlate to the total reward gained per graph. In our instances we see a 89\% increase in mean rewards obtained while going from 1 to 7 vertices of max depth. This suggests a trend, but needs to be studied further to gain appropriate conclusions. We think this is a result of being presented with more options throughout the legs, since more often than not, only a single leg may be explored using the non-adaptive algorithm.
+\end{enumerate}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\linewidth]{s_reward_per_leg.png}
+    \includegraphics[width=0.49\linewidth]{s_reward_per_depth.png}
+    \caption{Rewards obtained per different graph features}
+    \label{fig:s_rwlegdepth}
+\end{figure}
+
+\section{Bounded Weighted Depth Trees}\label{sec:bounded}
+\subsection{Structure and Importance}\label{sec:BWDTstruc}
+A bounded weighted depth tree (BWDT) is a tree that is bound in the cost of the path from the root to any given node in it. The formal definition is that a tree is $(\beta, B)$-bounded weighted depth if
+\[\forall v \in V:\mu_B(D(v))\leq\beta\]
+
+In many real networks (e.g., social graphs), the expected sum of edge costs along any root-to-node path is naturally bounded and as such can be described as a BWDT.
+
+\subsection{Tree Decomposition Algorithm}
+The key difficulty is that the LP’s support tree (\(T\), where all vertices have a chance of being probed) may have total expected cost much larger than \(B\). The author resolves this via a tree decomposition algorithm that cuts this tree into multiple subtrees, all of which have a total expected cost of exploration that does not exceed an arbitrary number \(\alpha\) (not to be confused with the \(\alpha\) of (\(\alpha,\beta\))-approximation). Upon successful tree decomposition we receive the result of the non-adaptive strategy as a set of set strategies, where any one of the subtrees can be probed and explored.
+
+\subsection{Experimental Dataset}
+In \textit{Theorem 13}\cite{cohen2022stochastic} the author makes a constraint for the BWTDs that his algorithm can guarantee the constant-constant approximation for. This constraint is dependent on the value of $\epsilon$, and says that only $(B(1-\epsilon),B)$-bound weighted depth trees can be used.
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{b_vertices.png}
+    \caption{BWDT experimental dataset}
+    \label{fig:b_vertices}
+\end{figure}
+
+Thus we randomly generated 100 graphs for each value of $$\epsilon\in\{0.05, 0.1, 0.3, 0.5, 0.7\}$$ with depths from $1-7$ and varying number of vertices to run the implemented algorithm on. The distribution of the graph sizes is shown in \cref{fig:b_vertices}.
+
+\subsection{Testing the theorem}
+We already established that one of the constraints of the theorem is in the BWTDs structure. \textit{Theorem 13}\cite{cohen2022stochastic} promises a (\(\frac{16(B+1)}{\epsilon^2},B\))-approximation of the adaptive algorithms for these instances of BWDT, provided the tree decomposition algorithm we use: $$\alpha=1-\epsilon/2$$
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\linewidth]{b_epsz005.png}
+    \includegraphics[width=0.49\linewidth]{b_epsz01.png}
+    \caption{Proposed minimal vs actual minimum, mean and maximum gain for low \(\epsilon\) values}
+    \label{fig:b_loweps}
+\end{figure}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\linewidth]{b_epsz03.png}
+    \includegraphics[width=0.49\linewidth]{b_epsz05.png}
+    \caption{Proposed minimal vs actual minimum, mean and maximum gain for medium \(\epsilon\) values}
+    \label{fig:b_mideps}
+\end{figure}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\linewidth]{b_epsz07.png}
+    \caption{Proposed minimal vs actual minimum, mean and maximum gain for high \(\epsilon\) values}
+    \label{fig:b_higheps}
+\end{figure}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{b_rewards.png}
+    \caption{Rewards obtained for \(\epsilon\) values}
+    \label{fig:b_rewards}
+\end{figure}
+
+Figures \cref{fig:b_loweps},\cref{fig:b_mideps},\cref{fig:b_higheps} show that just like with the spider graphs \cref{sec:spider} a lower multiplicate of the minimum theoretical limit of the obtainable rewards is actually obtained with higher $\epsilon$ values. At 0.7 the mean obtained values are close to only 50 times the minimum, and the minimal values are reaching the 1 limit, which the theorem guarantees. This is however not a bad thing, since the theoretical minimal limit of the non-adaptive algorithm is proportional to $\epsilon^2$ so a lower multiplicate still means a higher total, as is shown in \cref{fig:b_rewards}. Here we can observe an almost linear correlation between higher $\epsilon$ values and obtained mean rewards, which go up by 62\% over the observed range. \textbf{This is in line with what we can infer from the definition of BWDTs \cref{sec:BWDTstruc} and the article's \textit{Theorem 13}\cite{cohen2022stochastic}, where we trade off less constrained BWDT instances for more obtainable rewards at lower $\epsilon$ values, and the opposite at high values}. 
+
+\subsection{Result Analysis}
+We analyzed the results from other, independent factors from $\epsilon$ to measure how the algorithm operates on these.
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{b_reward_per_depth.png}
+    \caption{Rewards obtained per depth}
+    \label{fig:b_rwdepth}
+\end{figure}
+
+In figure \cref{fig:b_rwdepth} we see how depth and the obtained mean rewards correlate, which seems incremental, but a correct line is hard to determine due to the sparse data from the depth values in the middle. However, since the 1, 2 and 7 depth graphs are numerous, we can take an educated guess and say that the algorithm works better for deeper graphs, likely due to them being more numerous in vertices and thus having more options to choose from.
+
+\section{Conclusion}
+
+This report has combined the author’s theoretical framework with real-life results from our program implementation. The main points of the article have been determined to hold true, with extensive documentation on how the different values of $\epsilon$ affect each algorithm and graph type.
+
+Further studies could include larger generated sample sizes and also graphs with more vertices to confirm the theories for higher $n$ values as well, but inferring from our sample size, it can still be said, that the results were constant in all sizes of graphs.
+
+\bibliography{citations}
+\bibliographystyle{acm}
+
+\end{document}
